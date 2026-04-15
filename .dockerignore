@@ -1,0 +1,28 @@
+# Dependencies & build artifacts
+node_modules
+dist
+dist-electron
+release
+*.log
+npm-debug.log*
+
+# Git & IDE
+.git
+.gitignore
+.cursor
+.vscode
+*.md
+!README.md
+
+# Test / dev
+test-source
+test-output
+.env
+.env.*
+
+# Docs (not needed in image)
+docs
+
+# Misc
+.DS_Store
+*.local

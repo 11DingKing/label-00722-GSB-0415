@@ -1,0 +1,330 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  background-color: var(--color-deep-black);
+  color: var(--color-text-primary);
+  font-family: var(--font-mono), var(--font-chinese);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-terminal-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-dark);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-hover-gray);
+}
+
+/* Selection */
+::selection {
+  background: rgba(0, 255, 136, 0.3);
+  color: var(--color-text-primary);
+}
+
+/* Links */
+a {
+  color: var(--color-cyber-cyan);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-terminal-green);
+}
+
+/* Code */
+code, pre {
+  font-family: var(--font-mono);
+  background: var(--color-panel-gray);
+  border-radius: var(--radius-sm);
+}
+
+code {
+  padding: 2px 6px;
+  color: var(--color-terminal-green);
+}
+
+pre {
+  padding: var(--spacing-md);
+  overflow-x: auto;
+}
+
+/* Ant Design Overrides */
+.ant-btn-primary {
+  background: var(--gradient-primary) !important;
+  border: none !important;
+  color: var(--color-deep-black) !important;
+  font-weight: 600 !important;
+  text-shadow: none !important;
+  box-shadow: var(--shadow-glow-green) !important;
+  transition: all var(--transition-normal) !important;
+}
+
+.ant-btn-primary:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.6) !important;
+}
+
+.ant-btn-default {
+  background: transparent !important;
+  border: 1px solid var(--color-cyber-cyan) !important;
+  color: var(--color-cyber-cyan) !important;
+}
+
+.ant-btn-default:hover {
+  border-color: var(--color-terminal-green) !important;
+  color: var(--color-terminal-green) !important;
+}
+
+/* 按钮通用样式：防止文字换行 */
+.ant-btn {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  min-width: fit-content !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+}
+
+.ant-btn svg {
+  flex-shrink: 0 !important;
+}
+
+.ant-input {
+  background: var(--color-panel-gray) !important;
+  border: 1px solid var(--color-border-dark) !important;
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-mono) !important;
+}
+
+.ant-input:focus, .ant-input-focused {
+  border-color: var(--color-terminal-green) !important;
+  box-shadow: var(--shadow-glow-green) !important;
+}
+
+.ant-input::placeholder {
+  color: var(--color-text-placeholder) !important;
+}
+
+.ant-select-selector {
+  background: var(--color-panel-gray) !important;
+  border: 1px solid var(--color-border-dark) !important;
+  color: var(--color-text-primary) !important;
+}
+
+.ant-select-focused .ant-select-selector {
+  border-color: var(--color-terminal-green) !important;
+  box-shadow: var(--shadow-glow-green) !important;
+}
+
+.ant-select-dropdown {
+  background: var(--color-terminal-dark) !important;
+  border: 1px solid var(--color-border-dark) !important;
+}
+
+.ant-select-item {
+  color: var(--color-text-primary) !important;
+}
+
+.ant-select-item-option-active,
+.ant-select-item-option-selected {
+  background: var(--color-hover-gray) !important;
+}
+
+.ant-table {
+  background: transparent !important;
+}
+
+.ant-table-thead > tr > th {
+  background: var(--color-panel-gray) !important;
+  color: var(--color-text-secondary) !important;
+  border-bottom: 1px solid var(--color-border-dark) !important;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.ant-table-tbody > tr > td {
+  background: var(--color-terminal-dark) !important;
+  border-bottom: 1px solid var(--color-border-dark) !important;
+  color: var(--color-text-primary) !important;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: var(--color-hover-gray) !important;
+}
+
+.ant-modal-content {
+  background: var(--color-terminal-dark) !important;
+  border: 1px solid var(--color-border-dark) !important;
+  border-top: 2px solid var(--color-terminal-green) !important;
+}
+
+.ant-modal-header {
+  background: transparent !important;
+  border-bottom: 1px solid var(--color-border-dark) !important;
+}
+
+.ant-modal-title {
+  color: var(--color-terminal-green) !important;
+  font-family: var(--font-mono) !important;
+}
+
+.ant-modal-close-x {
+  color: var(--color-text-secondary) !important;
+}
+
+.ant-progress-bg {
+  background: var(--gradient-progress) !important;
+}
+
+.ant-progress-inner {
+  background: var(--color-panel-gray) !important;
+}
+
+.ant-message-notice-content {
+  background: var(--color-terminal-dark) !important;
+  border: 1px solid var(--color-border-dark) !important;
+  color: var(--color-text-primary) !important;
+}
+
+.ant-checkbox-inner {
+  background: var(--color-panel-gray) !important;
+  border-color: var(--color-border-dark) !important;
+}
+
+.ant-checkbox-checked .ant-checkbox-inner {
+  background: var(--color-terminal-green) !important;
+  border-color: var(--color-terminal-green) !important;
+}
+
+.ant-radio-inner {
+  background: var(--color-panel-gray) !important;
+  border-color: var(--color-border-dark) !important;
+}
+
+.ant-radio-checked .ant-radio-inner {
+  border-color: var(--color-terminal-green) !important;
+}
+
+.ant-radio-checked .ant-radio-inner::after {
+  background: var(--color-terminal-green) !important;
+}
+
+/* 单选框和复选框标签文字颜色 */
+.ant-radio-wrapper,
+.ant-checkbox-wrapper {
+  color: var(--color-text-primary) !important;
+}
+
+.ant-radio-wrapper span:not(.ant-radio),
+.ant-checkbox-wrapper span:not(.ant-checkbox) {
+  color: var(--color-text-primary) !important;
+  font-size: 14px !important;
+}
+
+.ant-radio-group,
+.ant-checkbox-group {
+  color: var(--color-text-primary) !important;
+}
+
+/* 表单标签颜色 */
+.ant-form-item-label > label {
+  color: var(--color-text-secondary) !important;
+}
+
+/* Switch 开关样式 */
+.ant-switch {
+  background: var(--color-border-dark) !important;
+}
+
+.ant-switch-checked {
+  background: var(--color-terminal-green) !important;
+}
+
+/* Custom Utility Classes */
+.geek-glow {
+  box-shadow: var(--shadow-glow-green);
+}
+
+.geek-border {
+  border: 1px solid var(--color-border-dark);
+  border-top: 2px solid var(--color-terminal-green);
+}
+
+.geek-card {
+  background: var(--color-terminal-dark);
+  border: 1px solid var(--color-border-dark);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+}
+
+.geek-title {
+  font-family: var(--font-mono);
+  color: var(--color-terminal-green);
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: var(--spacing-md);
+}
+
+.geek-title::before {
+  content: '> ';
+  opacity: 0.7;
+}
+
+.geek-title::after {
+  content: '_';
+  animation: cursor-blink 1s infinite;
+}
+
+@keyframes cursor-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* Terminal Progress Bar */
+.terminal-progress {
+  font-family: var(--font-mono);
+  color: var(--color-terminal-green);
+}
+
+.terminal-progress::before {
+  content: '[';
+}
+
+.terminal-progress::after {
+  content: ']';
+}

@@ -1,0 +1,41 @@
+# Docker Compose 配置 - Electron + Xvfb + noVNC
+# 用于在容器中运行和验证桌面应用
+#
+# 启动命令: docker compose up --build
+# 访问地址: http://localhost:6080
+#
+version: '3.8'
+
+services:
+  electron-app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: html-release-updater
+    ports:
+      # noVNC Web 界面
+      - "6080:6080"
+      # VNC 端口 (可选)
+      - "5900:5900"
+    environment:
+      - DISPLAY=:99
+      - VNC_PASSWORD=geek2026
+      - RESOLUTION=1280x720
+    volumes:
+      # 挂载测试用的源码目录
+      - ./test-source:/app/test-source:ro
+      # 挂载输出目录
+      - ./test-output:/app/test-output
+    restart: unless-stopped
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+# 网络配置
+networks:
+  default:
+    name: geek-electron-network
