@@ -1,10 +1,5 @@
 import Dexie, { type Table, type Transaction } from "dexie";
-import type {
-  PackConfig,
-  UpdateSettings,
-  UpdateLog,
-  CheckPath,
-} from "../types";
+import type { PackConfig, UpdateSettings, UpdateLog } from "../types";
 
 export const DB_VERSION = 2;
 export const DB_NAME = "HTMLReleaseUpdater";
@@ -57,7 +52,7 @@ class AppDatabase extends Dexie {
 
     this.on("versionchange", (event) => {
       console.log("Database version change detected", event);
-      if (event.oldVersion < event.newVersion) {
+      if (event.newVersion !== null && event.oldVersion < event.newVersion) {
         this.close();
       }
     });
