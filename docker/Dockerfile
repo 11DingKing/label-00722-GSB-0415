@@ -57,8 +57,8 @@ RUN npm install
 # 复制源码
 COPY . .
 
-# 构建应用
-RUN npm run build
+# 构建应用（仅前端+Electron源码编译，不打包二进制，容器内直接用 electron . 启动）
+RUN vue-tsc --noEmit && vite build
 
 # 复制 supervisord 配置（Xvfb + Fluxbox + x11vnc + noVNC + Electron）
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
