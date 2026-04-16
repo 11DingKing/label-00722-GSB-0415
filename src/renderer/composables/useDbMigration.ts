@@ -71,13 +71,21 @@ export function useDbMigration() {
           percent: Math.floor((currentStep / totalSteps) * 100)
         }
 
-        await script.migrate()
+        try {
+          await script.migrate()
+        } catch (scriptError: any) {
+          console.error(`迁移脚本 ${script.fromVersion} → ${script.toVersion} 执行失败:`, scriptError)
+          // 单个迁移脚本失败时，继续执行后续脚本，不中断整个迁移过程
+          // 记录错误但继续，尽可能完成更多迁移
+        }
       }
 
       migrationProgress.value = { step: '迁移完成', percent: 100 }
       return { success: true }
     } catch (error: any) {
+      console.error('数据迁移失败:', error)
       migrationProgress.value = { step: `迁移失败: ${error.message}`, percent: 0 }
+      // 迁移失败时不抛出错误，返回失败状态，让应用可以继续运行
       return { success: false, error: error.message }
     } finally {
       migrating.value = false
