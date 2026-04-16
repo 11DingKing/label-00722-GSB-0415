@@ -1,132 +1,250 @@
-import { ref } from 'vue'
-import { importDatabase } from '../database'
+import { ref } from "vue";
+import { importDatabase, db } from "../database";
 
 export interface MigrationScript {
-  fromVersion: string
-  toVersion: string
-  migrate: () => Promise<void>
+  fromVersion: number;
+  toVersion: number;
+  migrate: (tx: any) => Promise<void>;
 }
 
-// 数据迁移脚本注册表
-const migrationScripts: MigrationScript[] = [
-  // 示例迁移脚本
-  // {
-  //   fromVersion: 'v1.0.0',
-  //   toVersion: 'v1.1.0',
-  //   migrate: async () => {
-  //     // 执行数据结构迁移
-  //   }
-  // }
-]
+const migrationScripts: MigrationScript[] = [];
 
 export function useDbMigration() {
-  const migrating = ref(false)
-  const migrationProgress = ref({ step: '', percent: 0 })
+  const migrating = ref(false);
+  const migrationProgress = ref({ step: "", percent: 0 });
 
-  // 注册迁移脚本
   function registerMigration(script: MigrationScript) {
-    migrationScripts.push(script)
+    migrationScripts.push(script);
+    migrationScripts.sort((a, b) => a.fromVersion - b.fromVersion);
   }
 
-  // 查找需要执行的迁移脚本
-  function findMigrationPath(fromVersion: string, toVersion: string): MigrationScript[] {
-    const path: MigrationScript[] = []
-    let currentVersion = fromVersion
+  function findMigrationPath(
+    fromVersion: number,
+    toVersion: number,
+  ): MigrationScript[] {
+    const path: MigrationScript[] = [];
+    let currentVersion = fromVersion;
 
-    while (currentVersion !== toVersion) {
-      const script = migrationScripts.find(s => s.fromVersion === currentVersion)
-      if (!script) break
-      
-      path.push(script)
-      currentVersion = script.toVersion
+    while (currentVersion < toVersion) {
+      const script = migrationScripts.find(
+        (s) => s.fromVersion === currentVersion,
+      );
+      if (!script) {
+        currentVersion++;
+        continue;
+      }
 
-      // 防止无限循环
-      if (path.length > 100) break
+      path.push(script);
+      currentVersion = script.toVersion;
+
+      if (path.length > 100) break;
     }
 
-    return path
+    return path;
   }
 
-  // 执行数据迁移
-  async function executeMigration(fromVersion: string, toVersion: string): Promise<{ success: boolean; error?: string }> {
-    migrating.value = true
-    migrationProgress.value = { step: '准备迁移...', percent: 0 }
+  async function executeManualMigration(
+    fromVersion: number,
+    toVersion: number,
+  ): Promise<{ success: boolean; error?: string }> {
+    migrating.value = true;
+    migrationProgress.value = { step: "准备迁移...", percent: 0 };
 
     try {
-      const scripts = findMigrationPath(fromVersion, toVersion)
+      const scripts = findMigrationPath(fromVersion, toVersion);
 
       if (scripts.length === 0) {
-        // 无需迁移或没有迁移脚本
-        migrationProgress.value = { step: '无需数据迁移', percent: 100 }
-        return { success: true }
+        migrationProgress.value = { step: "无需数据迁移", percent: 100 };
+        return { success: true };
       }
 
-      const totalSteps = scripts.length
-      let currentStep = 0
+      const totalSteps = scripts.length;
+      let currentStep = 0;
 
       for (const script of scripts) {
-        currentStep++
+        currentStep++;
         migrationProgress.value = {
-          step: `执行迁移: ${script.fromVersion} → ${script.toVersion}`,
-          percent: Math.floor((currentStep / totalSteps) * 100)
-        }
+          step: `执行迁移: v${script.fromVersion} → v${script.toVersion}`,
+          percent: Math.floor((currentStep / totalSteps) * 100),
+        };
 
-        await script.migrate()
+        await db.transaction("rw", db.tables, async (tx) => {
+          await script.migrate(tx);
+        });
       }
 
-      migrationProgress.value = { step: '迁移完成', percent: 100 }
-      return { success: true }
+      migrationProgress.value = { step: "迁移完成", percent: 100 };
+      return { success: true };
     } catch (error: any) {
-      migrationProgress.value = { step: `迁移失败: ${error.message}`, percent: 0 }
-      return { success: false, error: error.message }
+      migrationProgress.value = {
+        step: `迁移失败: ${error.message}`,
+        percent: 0,
+      };
+      console.error("Migration failed:", error);
+      return { success: false, error: error.message };
     } finally {
-      migrating.value = false
+      migrating.value = false;
     }
   }
 
-  // 从备份恢复 IndexedDB 数据
-  async function restoreFromBackup(backupPath: string): Promise<{ success: boolean; error?: string }> {
-    if (!window.electronAPI) return { success: false, error: 'Electron API not available' }
+  async function restoreFromBackup(
+    backupPath: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!window.electronAPI)
+      return { success: false, error: "Electron API not available" };
 
-    migrating.value = true
-    migrationProgress.value = { step: '读取备份数据...', percent: 20 }
+    migrating.value = true;
+    migrationProgress.value = { step: "读取备份数据...", percent: 20 };
 
     try {
-      const dbBackupPath = `${backupPath}/indexeddb-backup.json`
-      const exists = await window.electronAPI.fs.exists(dbBackupPath)
+      const dbBackupPath = `${backupPath}/indexeddb-backup.json`;
+      const exists = await window.electronAPI.fs.exists(dbBackupPath);
 
       if (!exists) {
-        migrationProgress.value = { step: '无 IndexedDB 备份', percent: 100 }
-        return { success: true }
+        migrationProgress.value = { step: "无 IndexedDB 备份", percent: 100 };
+        return { success: true };
       }
 
-      const backupData = await window.electronAPI.fs.readJson(dbBackupPath)
-      
-      migrationProgress.value = { step: '导入数据...', percent: 60 }
-      await importDatabase(JSON.stringify(backupData))
+      const backupData = await window.electronAPI.fs.readJson(dbBackupPath);
 
-      migrationProgress.value = { step: '恢复完成', percent: 100 }
-      return { success: true }
+      migrationProgress.value = { step: "导入数据...", percent: 60 };
+      await importDatabase(JSON.stringify(backupData));
+
+      migrationProgress.value = { step: "恢复完成", percent: 100 };
+      return { success: true };
     } catch (error: any) {
-      migrationProgress.value = { step: `恢复失败: ${error.message}`, percent: 0 }
-      return { success: false, error: error.message }
+      migrationProgress.value = {
+        step: `恢复失败: ${error.message}`,
+        percent: 0,
+      };
+      console.error("Restore failed:", error);
+      return { success: false, error: error.message };
     } finally {
-      migrating.value = false
+      migrating.value = false;
     }
   }
 
-  // 检查是否需要迁移
-  function needsMigration(fromVersion: string, toVersion: string): boolean {
-    const scripts = findMigrationPath(fromVersion, toVersion)
-    return scripts.length > 0
+  function needsMigration(fromVersion: number, toVersion: number): boolean {
+    const scripts = findMigrationPath(fromVersion, toVersion);
+    return scripts.length > 0;
+  }
+
+  async function getCurrentDbVersion(): Promise<number> {
+    try {
+      if (!db.isOpen()) {
+        await db.open();
+      }
+      return db.verno;
+    } catch (error) {
+      console.error("Failed to get DB version:", error);
+      return 0;
+    }
+  }
+
+  async function backupToFile(
+    backupPath: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!window.electronAPI)
+      return { success: false, error: "Electron API not available" };
+
+    migrating.value = true;
+    migrationProgress.value = { step: "备份数据...", percent: 30 };
+
+    try {
+      const data = {
+        packConfigs: await db.packConfigs.toArray(),
+        updateSettings: await db.updateSettings.toArray(),
+        updateLogs: await db.updateLogs.toArray(),
+        recentPaths: await db.recentPaths.toArray(),
+        timestamp: new Date().toISOString(),
+        version: db.verno,
+      };
+
+      const dbBackupPath = `${backupPath}/indexeddb-backup.json`;
+      await window.electronAPI.fs.writeJson(dbBackupPath, data);
+
+      migrationProgress.value = { step: "备份完成", percent: 100 };
+      return { success: true };
+    } catch (error: any) {
+      migrationProgress.value = {
+        step: `备份失败: ${error.message}`,
+        percent: 0,
+      };
+      console.error("Backup failed:", error);
+      return { success: false, error: error.message };
+    } finally {
+      migrating.value = false;
+    }
+  }
+
+  async function validateAndRepairData(): Promise<{
+    success: boolean;
+    repaired: number;
+  }> {
+    let repaired = 0;
+
+    try {
+      const settings = await db.updateSettings.toArray();
+      for (const setting of settings) {
+        let needsRepair = false;
+
+        if (!Array.isArray(setting.checkPaths)) {
+          (setting as any).checkPaths = [];
+          needsRepair = true;
+        }
+
+        if (!setting.checkStrategy) {
+          setting.checkStrategy = "manual";
+          needsRepair = true;
+        }
+
+        if (typeof setting.checkCycle !== "number") {
+          setting.checkCycle = 24;
+          needsRepair = true;
+        }
+
+        if (needsRepair) {
+          await db.updateSettings.put(setting);
+          repaired++;
+        }
+      }
+
+      const configs = await db.packConfigs.toArray();
+      for (const config of configs) {
+        let needsRepair = false;
+
+        if (!config.createdAt) {
+          config.createdAt = new Date();
+          needsRepair = true;
+        }
+
+        if (!config.updatedAt) {
+          config.updatedAt = new Date();
+          needsRepair = true;
+        }
+
+        if (needsRepair) {
+          await db.packConfigs.put(config);
+          repaired++;
+        }
+      }
+
+      return { success: true, repaired };
+    } catch (error) {
+      console.error("Data validation failed:", error);
+      return { success: false, repaired };
+    }
   }
 
   return {
     migrating,
     migrationProgress,
     registerMigration,
-    executeMigration,
+    executeManualMigration,
     restoreFromBackup,
-    needsMigration
-  }
+    backupToFile,
+    needsMigration,
+    getCurrentDbVersion,
+    validateAndRepairData,
+  };
 }
