@@ -60,7 +60,8 @@ async function createDatabaseInstance(): Promise<AppDatabase> {
       try {
         // 打开现有数据库
         await tempDb.open()
-        console.log('成功打开现有数据库，版本:', tempDb.verno)
+        const oldVersion = tempDb.verno
+        console.log('成功打开现有数据库，版本:', oldVersion)
         
         // 备份现有数据
         const backupData = {
@@ -73,41 +74,94 @@ async function createDatabaseInstance(): Promise<AppDatabase> {
         // 关闭临时数据库
         tempDb.close()
         
-        // 删除旧数据库
-        await Dexie.delete('HTMLReleaseUpdater')
-        
-        // 创建新数据库
-        const newDb = new AppDatabase()
-        await newDb.open()
-        
-        // 恢复数据
-        await newDb.transaction('rw', [newDb.packConfigs, newDb.updateSettings, newDb.updateLogs, newDb.recentPaths], async () => {
-          if (backupData.packConfigs.length) {
-            await newDb.packConfigs.bulkAdd(backupData.packConfigs)
+        try {
+          // 删除旧数据库
+          await Dexie.delete('HTMLReleaseUpdater')
+          
+          // 创建新数据库
+          const newDb = new AppDatabase()
+          await newDb.open()
+          
+          // 恢复数据
+          await newDb.transaction('rw', [newDb.packConfigs, newDb.updateSettings, newDb.updateLogs, newDb.recentPaths], async () => {
+            if (backupData.packConfigs.length) {
+              await newDb.packConfigs.bulkAdd(backupData.packConfigs)
+            }
+            if (backupData.updateSettings.length) {
+              await newDb.updateSettings.bulkAdd(backupData.updateSettings)
+            }
+            if (backupData.updateLogs.length) {
+              await newDb.updateLogs.bulkAdd(backupData.updateLogs)
+            }
+            if (backupData.recentPaths.length) {
+              await newDb.recentPaths.bulkAdd(backupData.recentPaths)
+            }
+          })
+          
+          console.log('数据库迁移完成，数据已恢复')
+          return newDb
+        } catch (migrateError: any) {
+          console.error('数据库迁移失败，尝试恢复原有数据:', migrateError)
+          
+          try {
+            // 迁移失败，尝试将备份的数据恢复回去
+            await Dexie.delete('HTMLReleaseUpdater')
+            
+            // 创建临时数据库恢复数据
+            const restoreDb = new Dexie('HTMLReleaseUpdater')
+            // 使用与旧版本相同的schema结构
+            restoreDb.version(oldVersion).stores({
+              packConfigs: '++id, templateName, sourcePath, createdAt',
+              updateSettings: '++id',
+              updateLogs: '++id, timestamp, result',
+              recentPaths: '++id, path, type, usedAt'
+            })
+            
+            await restoreDb.open()
+            
+            // 恢复所有备份数据
+            await restoreDb.transaction('rw', restoreDb.tables, async () => {
+              if (backupData.packConfigs.length) {
+                await restoreDb.table('packConfigs').bulkAdd(backupData.packConfigs)
+              }
+              if (backupData.updateSettings.length) {
+                await restoreDb.table('updateSettings').bulkAdd(backupData.updateSettings)
+              }
+              if (backupData.updateLogs.length) {
+                await restoreDb.table('updateLogs').bulkAdd(backupData.updateLogs)
+              }
+              if (backupData.recentPaths.length) {
+                await restoreDb.table('recentPaths').bulkAdd(backupData.recentPaths)
+              }
+            })
+            
+            console.log('数据恢复成功，用户数据已保留')
+            return restoreDb as AppDatabase
+          } catch (restoreError: any) {
+            console.error('数据恢复失败:', restoreError)
+            // 最后安全措施：将备份数据导出到本地文件，避免彻底丢失
+            try {
+              if (window.electronAPI) {
+                const backupPath = `./db-backup-${Date.now()}.json`
+                await window.electronAPI.fs.writeJson(backupPath, backupData)
+                console.warn('已将用户数据备份到:', backupPath)
+              }
+            } catch (backupError) {
+              console.error('数据备份失败:', backupError)
+            }
+            
+            // 极端情况下才创建空数据库
+            const fallbackDb = new AppDatabase()
+            await fallbackDb.open()
+            console.warn('已创建新的空数据库，建议从备份文件恢复数据')
+            return fallbackDb
           }
-          if (backupData.updateSettings.length) {
-            await newDb.updateSettings.bulkAdd(backupData.updateSettings)
-          }
-          if (backupData.updateLogs.length) {
-            await newDb.updateLogs.bulkAdd(backupData.updateLogs)
-          }
-          if (backupData.recentPaths.length) {
-            await newDb.recentPaths.bulkAdd(backupData.recentPaths)
-          }
-        })
-        
-        console.log('数据库迁移完成，数据已恢复')
-        return newDb
-      } catch (migrateError: any) {
-        console.error('数据库迁移失败:', migrateError)
-        tempDb.close()
-        
-        // 最后尝试：删除旧数据库，创建新的空数据库
-        await Dexie.delete('HTMLReleaseUpdater')
-        const fallbackDb = new AppDatabase()
-        await fallbackDb.open()
-        console.warn('已创建新的空数据库，用户数据可能丢失')
-        return fallbackDb
+        }
+      } catch (tempDbError: any) {
+        console.error('临时数据库操作失败:', tempDbError)
+        try {
+        } catch (e) { /* ignore */ }
+        throw tempDbError
       }
     }
     
